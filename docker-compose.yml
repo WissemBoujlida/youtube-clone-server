@@ -1,0 +1,68 @@
+services:
+  rustfs:
+    image: rustfs/rustfs:latest
+    container_name: yt-clone-rustfs
+    ports:
+      - "9000:9000" # S3 API
+      - "9001:9001" # console
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      - RUSTFS_ADDRESS=0.0.0.0:9000
+      - RUSTFS_CONSOLE_ADDRESS=0.0.0.0:9001
+      - RUSTFS_CONSOLE_ENABLE=true
+      - RUSTFS_CONSOLE_CORS_ALLOWED_ORIGINS=*
+      # SECURITY
+      - RUSTFS_ACCESS_KEY=${RUSTFS_ACCESS_KEY}
+      - RUSTFS_SECRET_KEY=${RUSTFS_SECRET_KEY}
+      # EVENT NOTIFICATION
+      - RUSTFS_NOTIFY_ENABLE=true
+      - RUSTFS_OUTBOUND_ALLOW_ORIGINS=http://host.docker.internal:8080
+      # TEST WEBHOOK TARGET
+      - RUSTFS_NOTIFY_WEBHOOK_ENABLE_TEST=on
+      - RUSTFS_NOTIFY_WEBHOOK_ENDPOINT_TEST=http://host.docker.internal:8080/webhooks/s3
+      - RUSTFS_NOTIFY_WEBHOOK_QUEUE_DIR_TEST=/tmp/rustfs-events
+      - RUSTFS_NOTIFY_WEBHOOK_AUTH_TOKEN_TEST=${RUSTFS_WEBHOOK_AUTH_TOKEN}
+    volumes:
+      - rustfs_data:/data
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:latest
+    container_name: yt-clone-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    volumes:
+      - postgres:/var/lib/postgresql
+    restart: unless-stopped
+
+  kafka:
+    image: confluentinc/cp-kafka
+    container_name: yt-clone-kafka
+    environment:
+      KAFKA_NODE_ID: 1
+      CLUSTER_ID: '4L622nShTWWkrFuMmupqqg'
+      KAFKA_PROCESS_ROLES: 'broker,controller'
+      # controller config
+      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@kafka:29093"
+      KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+      # listeners config
+      KAFKA_LISTENERS: 'PLAINTEXT://0.0.0.0:29092,CONTROLLER://0.0.0.0:29093,PLAINTEXT_HOST://0.0.0.0:9092'
+      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT'
+      KAFKA_INTER_BROKER_LISTENER_NAME: 'PLAINTEXT'
+      # replication factors
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+    ports:
+      - "9092:9092"
+    restart: unless-stopped
+
+volumes:
+  rustfs_data:
+  postgres:

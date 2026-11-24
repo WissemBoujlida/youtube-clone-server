@@ -1,0 +1,7 @@
+eureka:
+  client:
+    register-with-eureka: false # discovery service should not register itself
+    fetch-registry: false # discovery service should not fetch registry
+
+server:
+  port: 8761

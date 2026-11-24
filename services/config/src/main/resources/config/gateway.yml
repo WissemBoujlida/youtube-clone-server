@@ -1,0 +1,16 @@
+spring:
+  cloud:
+    discovery:
+      enabled: true
+
+    gateway:
+      server:
+        webmvc:
+          routes:
+            - id: video-service
+              uri: lb://VIDEO
+              predicates:
+                - Path=/api/v1/videos/**
+
+server:
+  port: 8222
